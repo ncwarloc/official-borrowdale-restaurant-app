@@ -1,8 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Check } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -23,8 +26,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { GhostButton, GlassPanel, GoldButton } from '@/components/zone-garden';
+import { useNotice } from '@/context/notice-context';
 import { useUser } from '@/context/user-context';
 import { F_BODY, F_DISPLAY, F_LABEL } from '@/constants/theme';
+import { auth, db } from '@/lib/firebase';
 
 const AUTH_BG_IMAGES: ImageSourcePropType[] = [
   require('@/assets/images/auth-bg-1.jpg'),
@@ -98,6 +103,23 @@ function randomPin(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  'auth/email-already-in-use': 'An account with that email already exists — try logging in instead.',
+  'auth/invalid-email': 'That email address doesn’t look right.',
+  'auth/weak-password': 'Password must be at least 6 characters.',
+  'auth/invalid-credential': 'Incorrect email or password.',
+  'auth/user-not-found': 'Incorrect email or password.',
+  'auth/wrong-password': 'Incorrect email or password.',
+  'auth/too-many-requests': 'Too many attempts — please wait a moment and try again.',
+  'auth/network-request-failed': 'Network error — check your connection and try again.',
+};
+
+function authErrorMessage(error: unknown): string {
+  const code = (error as { code?: string })?.code;
+  if (code && AUTH_ERROR_MESSAGES[code]) return AUTH_ERROR_MESSAGES[code];
+  return 'Something went wrong — please try again.';
+}
+
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
 
@@ -137,10 +159,59 @@ export default function AuthScreen() {
   }, []);
 
   const { setUser } = useUser();
+  const { showNotice } = useNotice();
+  const [submitting, setSubmitting] = useState(false);
 
-  const enterAsMember = () => {
-    setUser({ name: form.name || 'Guest Diner', email: form.email, guest: false });
-    router.replace('/(tabs)');
+  const handleSubmit = async () => {
+    if (submitting) return;
+
+    if (!auth || !db) {
+      showNotice('Sign-in isn’t set up yet — add your Firebase project config to .env.');
+      return;
+    }
+    const firebaseAuth = auth;
+    const firestore = db;
+
+    const email = form.email.trim();
+    const password = form.password;
+    const name = form.name.trim();
+
+    if (!email || !password) {
+      showNotice('Enter an email and password to continue.');
+      return;
+    }
+    if (mode === 'signup' && !name) {
+      showNotice('Enter your name to create an account.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      if (mode === 'signup') {
+        const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        await setDoc(doc(firestore, 'users', credential.user.uid), {
+          name,
+          email,
+          points: 0,
+          favorites: [],
+        });
+        setUser({ name, email, guest: false });
+      } else {
+        const credential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+        const snap = await getDoc(doc(firestore, 'users', credential.user.uid));
+        const savedName = snap.exists() ? (snap.data().name as string | undefined) : undefined;
+        setUser({
+          name: savedName || credential.user.email || 'Member',
+          email: credential.user.email || email,
+          guest: false,
+        });
+      }
+      router.replace('/(tabs)');
+    } catch (error) {
+      showNotice(authErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const enterAsGuest = () => {
@@ -411,12 +482,20 @@ export default function AuthScreen() {
                   </Pressable>
                 )}
 
-                <GoldButton full style={styles.submitButton} onPress={enterAsMember}>
-                  <Text style={[F_LABEL, styles.goldButtonText]}>
-                    {mode === 'login' ? 'Log In' : 'Create Account'}
-                  </Text>
+                <GoldButton
+                  full
+                  disabled={submitting}
+                  style={styles.submitButton}
+                  onPress={handleSubmit}>
+                  {submitting ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={[F_LABEL, styles.goldButtonText]}>
+                      {mode === 'login' ? 'Log In' : 'Create Account'}
+                    </Text>
+                  )}
                 </GoldButton>
-                <GhostButton full onPress={enterAsGuest}>
+                <GhostButton full disabled={submitting} onPress={enterAsGuest}>
                   <Text style={[F_LABEL, styles.ghostButtonText]}>Continue as Guest</Text>
                 </GhostButton>
                 <Text style={[F_BODY, styles.guestDisclaimer]}>

@@ -29,6 +29,7 @@ import { FieldInput, GlassPanel, GoldButton, ScreenHeader } from '@/components/z
 import { F_BODY, F_LABEL, useZoneGardenTheme } from '@/constants/theme';
 import { RESTAURANT_ADDRESS, RESTAURANT_WHATSAPP } from '@/constants/restaurant';
 import { useCart } from '@/context/cart-context';
+import { useNotice } from '@/context/notice-context';
 import { useNotifications } from '@/context/notifications-context';
 import { useOrders } from '@/context/orders-context';
 import { useUser } from '@/context/user-context';
@@ -69,8 +70,10 @@ export default function CheckoutScreen() {
   const { cart, subtotal, discount, tax, clearCart } = useCart();
   const { addOrder } = useOrders();
   const { addNotification } = useNotifications();
+  const { showNotice } = useNotice();
   const { user } = useUser();
 
+  const [placingOrder, setPlacingOrder] = useState(false);
   const [fulfillment, setFulfillment] = useState<Fulfillment>('delivery');
   const [phone, setPhone] = useState('');
   const [dnotes, setDnotes] = useState('');
@@ -94,23 +97,26 @@ export default function CheckoutScreen() {
   const delivery = fulfillment === 'delivery' ? distanceKm * DELIVERY_RATE_PER_KM : 0;
   const total = subtotal - discount + delivery + tax;
 
-  const handlePlaceOrder = () => {
-    if (cart.length === 0) return;
-    const order = addOrder({ total, payment, fulfillment, items: cart });
+  const handlePlaceOrder = async () => {
+    if (cart.length === 0 || placingOrder) return;
 
-    const itemLines = cart
-      .map(
-        (line) =>
-          `• ${line.item.name} x${line.qty}${line.addons.length ? ` (${line.addons.map((a) => a.n).join(', ')})` : ''}`,
-      )
-      .join('\n');
-    const fulfillmentLine =
-      fulfillment === 'delivery'
-        ? `Delivery — ${address || '-'}`
-        : fulfillment === 'pickup'
-          ? 'Pickup at Zone Garden'
-          : `Dine-In — ${reserveTime || '-'}`;
-    const message = `Order #${order.number}
+    setPlacingOrder(true);
+    try {
+      const order = await addOrder({ total, payment, fulfillment, items: cart });
+
+      const itemLines = cart
+        .map(
+          (line) =>
+            `• ${line.item.name} x${line.qty}${line.addons.length ? ` (${line.addons.map((a) => a.n).join(', ')})` : ''}`,
+        )
+        .join('\n');
+      const fulfillmentLine =
+        fulfillment === 'delivery'
+          ? `Delivery — ${address || '-'}`
+          : fulfillment === 'pickup'
+            ? 'Pickup at Zone Garden'
+            : `Dine-In — ${reserveTime || '-'}`;
+      const message = `Order #${order.number}
 
 Customer:
 ${user?.name || 'Guest'}
@@ -133,15 +139,20 @@ ${payment === 'ecocash' ? 'EcoCash' : 'Cash on Delivery'}
 Special Instructions:
 ${dnotes || 'None'}`;
 
-    Linking.openURL(`https://wa.me/${RESTAURANT_WHATSAPP}?text=${encodeURIComponent(message)}`);
+      Linking.openURL(`https://wa.me/${RESTAURANT_WHATSAPP}?text=${encodeURIComponent(message)}`);
 
-    addNotification(
-      'Order sent',
-      `Order #${order.number} has been sent to Zone Garden for $${total.toFixed(2)}.`,
-      'order',
-    );
-    clearCart();
-    router.push({ pathname: '/confirmation', params: { orderNumber: String(order.number) } });
+      addNotification(
+        'Order sent',
+        `Order #${order.number} has been sent to Zone Garden for $${total.toFixed(2)}.`,
+        'order',
+      );
+      clearCart();
+      router.push({ pathname: '/confirmation', params: { orderId: order.id } });
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : 'Could not place order — please try again.');
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
   const selectSavedAddress = (a: (typeof SAVED_ADDRESSES)[number]) => {
@@ -393,10 +404,16 @@ ${dnotes || 'None'}`;
             <SummaryRow label="Grand Total" value={total} bold />
           </GlassPanel>
 
-          <GoldButton full onPress={handlePlaceOrder}>
+          <GoldButton full disabled={placingOrder} onPress={handlePlaceOrder}>
             <View style={styles.placeOrderRow}>
-              <MessageSquareText size={16} color="#FFFFFF" />
-              <Text style={styles.placeOrderText}>Place Order via WhatsApp</Text>
+              {placingOrder ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <MessageSquareText size={16} color="#FFFFFF" />
+                  <Text style={styles.placeOrderText}>Place Order via WhatsApp</Text>
+                </>
+              )}
             </View>
           </GoldButton>
         </View>

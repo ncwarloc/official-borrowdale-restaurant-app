@@ -8,6 +8,14 @@ import { useCart } from '@/context/cart-context';
 import { useOrders, type Order } from '@/context/orders-context';
 import { useUser } from '@/context/user-context';
 
+function formatOrderDate(date: Date | null): string {
+  if (!date) return 'Just now';
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+  if (isToday) return 'Today';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export default function OrdersScreen() {
   const theme = useZoneGardenTheme();
   const { user } = useUser();
@@ -40,14 +48,14 @@ export default function OrdersScreen() {
             {orders.map((order) => {
               const delivered = order.status === 'delivered';
               return (
-                <GlassPanel key={order.number} style={styles.card}>
+                <GlassPanel key={order.id} style={styles.card}>
                   <View style={styles.topRow}>
                     <View>
                       <Text style={[F_BODY, styles.orderNumber, { color: theme.text }]}>
                         Order #{order.number}
                       </Text>
                       <Text style={[F_BODY, styles.orderMeta, { color: theme.textMuted }]}>
-                        {order.date} · {order.items.length} items
+                        {formatOrderDate(order.createdAt)} · {order.items.length} items
                       </Text>
                     </View>
                     <View
@@ -77,7 +85,7 @@ export default function OrdersScreen() {
                     <View style={styles.actions}>
                       {!delivered && (
                         <GhostButton
-                          onPress={() => markDelivered(order.number)}
+                          onPress={() => markDelivered(order.id)}
                           style={styles.actionButton}>
                           <Text style={[F_BODY, styles.actionText, { color: theme.text }]}>
                             Confirm Delivered

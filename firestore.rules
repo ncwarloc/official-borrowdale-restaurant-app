@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // points must start at 0 — anything else is rejected at signup.
+      allow create: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.points == 0;
+
+      // The client may update its own doc (e.g. favorites) but can never
+      // change `points` itself — that field only ever moves via the
+      // awardPointsOnDelivery Cloud Function, which uses the Admin SDK and
+      // therefore bypasses these rules entirely. Any client write that
+      // tries to change `points` is rejected here.
+      allow update: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.points == resource.data.points;
+
+      match /addresses/{addressId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    match /orders/{orderId} {
+      allow read, update: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+  }
+}

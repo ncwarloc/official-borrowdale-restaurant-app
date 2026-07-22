@@ -19,9 +19,9 @@ function backToHome() {
 
 export default function ConfirmationScreen() {
   const theme = useZoneGardenTheme();
-  const { orderNumber } = useLocalSearchParams<{ orderNumber: string }>();
+  const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const { orders } = useOrders();
-  const order = orders.find((o) => o.number === Number(orderNumber));
+  const order = orders.find((o) => o.id === orderId);
 
   if (!order) {
     return (

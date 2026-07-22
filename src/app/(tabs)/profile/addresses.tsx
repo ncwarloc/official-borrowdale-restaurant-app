@@ -16,6 +16,7 @@ export default function SavedAddressesScreen() {
   const { showNotice } = useNotice();
 
   const [label, setLabel] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const {
     text: address,
     coords,
@@ -31,11 +32,25 @@ export default function SavedAddressesScreen() {
 
   const canSubmit = label.trim().length > 0 && address.trim().length > 0;
 
-  const handleAdd = () => {
-    addAddress(label, address, coords);
-    setLabel('');
-    reset();
-    showNotice('Address saved.');
+  const handleAdd = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await addAddress(label, address, coords);
+      setLabel('');
+      reset();
+      showNotice('Address saved.');
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : 'Could not save address — please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    deleteAddress(id).catch((error) => {
+      showNotice(error instanceof Error ? error.message : 'Could not delete address — please try again.');
+    });
   };
 
   return (
@@ -63,7 +78,7 @@ export default function SavedAddressesScreen() {
                         <Text style={styles.addressLabel}>{a.label}</Text> — {a.address}
                       </Text>
                     </View>
-                    <Pressable onPress={() => deleteAddress(a.id)} hitSlop={8}>
+                    <Pressable onPress={() => handleDelete(a.id)} hitSlop={8}>
                       <X size={16} color={theme.textMuted} />
                     </Pressable>
                   </View>
@@ -165,12 +180,22 @@ export default function SavedAddressesScreen() {
               )}
             </View>
 
-            <GhostButton full disabled={!canSubmit} onPress={handleAdd} style={styles.addButton}>
+            <GhostButton
+              full
+              disabled={!canSubmit || submitting}
+              onPress={handleAdd}
+              style={styles.addButton}>
               <View style={styles.addButtonRow}>
-                <Plus size={15} color={theme.text} />
-                <Text style={[F_BODY, styles.addButtonText, { color: theme.text }]}>
-                  Add Address
-                </Text>
+                {submitting ? (
+                  <ActivityIndicator size="small" color={theme.text} />
+                ) : (
+                  <>
+                    <Plus size={15} color={theme.text} />
+                    <Text style={[F_BODY, styles.addButtonText, { color: theme.text }]}>
+                      Add Address
+                    </Text>
+                  </>
+                )}
               </View>
             </GhostButton>
           </GlassPanel>
