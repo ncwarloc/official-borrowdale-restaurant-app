@@ -25,6 +25,8 @@ import { FoodCard, GlassPanel, Pill, Row } from '@/components/zone-garden';
 import { BottomTabInset, F_BODY, F_DISPLAY, F_LABEL, Spacing, useZoneGardenTheme } from '@/constants/theme';
 import { dishImg } from '@/constants/dish-images';
 import { CATEGORIES, CHEF_RECOMMENDATION, ITEMS, type MenuItem } from '@/constants/menu-data';
+import { useFavorites } from '@/context/favorites-context';
+import { useNotifications } from '@/context/notifications-context';
 
 const HERO_SLIDES: { source: ImageSourcePropType; sub: string }[] = [
   { source: require('@/assets/images/dishes/home-photo-1.jpg'), sub: 'An evening at Zone Garden' },
@@ -96,10 +98,8 @@ export default function HomeScreen() {
     return () => clearInterval(iv);
   }, []);
 
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
-  };
+  const { favorites, toggleFavorite } = useFavorites();
+  const { unreadCount } = useNotifications();
 
   const [searchQuery, setSearchQuery] = useState('');
   const q = searchQuery.trim().toLowerCase();
@@ -111,6 +111,10 @@ export default function HomeScreen() {
       : [];
 
   const closeSearch = () => setSearchQuery('');
+  const openItem = (item: { id: string }) => {
+    closeSearch();
+    router.push(`/item/${item.id}`);
+  };
 
   return (
     <View style={[styles.flex, { backgroundColor: theme.bg }]}>
@@ -129,12 +133,15 @@ export default function HomeScreen() {
             </View>
           </View>
           <Pressable
-            onPress={() => router.push('/notifications')}
+            onPress={() => router.push('/(tabs)/profile/notifications')}
             style={[
               styles.bellButton,
               { backgroundColor: theme.card, borderColor: theme.cardBorder },
             ]}>
             <Bell size={18} color={theme.text} />
+            {unreadCount > 0 && (
+              <View style={[styles.unreadDot, { borderColor: theme.card }]} />
+            )}
           </Pressable>
         </View>
 
@@ -177,7 +184,7 @@ export default function HomeScreen() {
                   searchResults.map((item, i) => (
                     <Pressable
                       key={item.id}
-                      onPress={closeSearch}
+                      onPress={() => openItem(item)}
                       style={[
                         styles.resultRow,
                         i < searchResults.length - 1 && {
@@ -250,7 +257,7 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipsRow}>
           {quickChips.map((c) => (
-            <Pill key={c.id} style={styles.chip}>
+            <Pill key={c.id} style={styles.chip} onPress={() => router.push(`/category/${c.id}`)}>
               {c.name}
             </Pill>
           ))}
@@ -262,6 +269,7 @@ export default function HomeScreen() {
               key={item.id}
               item={item}
               image={dishImg(item)}
+              onOpen={openItem}
               isFavorite={favorites.includes(item.id)}
               onToggleFavorite={toggleFavorite}
             />
@@ -270,7 +278,7 @@ export default function HomeScreen() {
 
         {CHEF_RECOMMENDATION && (
           <View style={styles.chefWrap}>
-            <ChefRecommendationCard item={CHEF_RECOMMENDATION} />
+            <ChefRecommendationCard item={CHEF_RECOMMENDATION} onPress={openItem} />
           </View>
         )}
 
@@ -280,6 +288,7 @@ export default function HomeScreen() {
               key={item.id}
               item={item}
               image={dishImg(item)}
+              onOpen={openItem}
               isFavorite={favorites.includes(item.id)}
               onToggleFavorite={toggleFavorite}
             />
@@ -292,6 +301,7 @@ export default function HomeScreen() {
               key={item.id}
               item={item}
               image={dishImg(item)}
+              onOpen={openItem}
               isFavorite={favorites.includes(item.id)}
               onToggleFavorite={toggleFavorite}
             />
@@ -330,11 +340,17 @@ export default function HomeScreen() {
   );
 }
 
-function ChefRecommendationCard({ item }: { item: MenuItem }) {
+function ChefRecommendationCard({
+  item,
+  onPress,
+}: {
+  item: MenuItem;
+  onPress: (item: { id: string }) => void;
+}) {
   const theme = useZoneGardenTheme();
 
   return (
-    <GlassPanel style={styles.chefPanel}>
+    <GlassPanel onPress={() => onPress(item)} style={styles.chefPanel}>
       <View style={styles.chefRow}>
         <Image source={dishImg(item)} style={styles.chefImage} resizeMode="cover" />
         <View style={styles.chefTextCol}>
@@ -393,6 +409,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 6,
+    right: 7,
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#E35B5B',
+    borderWidth: 1.5,
   },
   searchWrap: {
     paddingHorizontal: 20,

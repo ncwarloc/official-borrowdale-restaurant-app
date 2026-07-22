@@ -19,10 +19,35 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="explore">
-        <Label>Explore</Label>
+      <NativeTabs.Trigger name="menu">
+        <Label>Menu</Label>
         <Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
+          sf="fork.knife"
+          androidSrc={require('@/assets/images/tabIcons/explore.png')}
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="cart">
+        <Label>Cart</Label>
+        <Icon
+          sf="cart"
+          androidSrc={require('@/assets/images/tabIcons/home.png')}
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="orders">
+        <Label>Orders</Label>
+        <Icon
+          sf="list.bullet"
+          androidSrc={require('@/assets/images/tabIcons/explore.png')}
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="profile">
+        <Label>Profile</Label>
+        <Icon
+          sf="person"
+          androidSrc={require('@/assets/images/tabIcons/home.png')}
         />
       </NativeTabs.Trigger>
     </NativeTabs>

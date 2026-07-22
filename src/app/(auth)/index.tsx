@@ -23,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { GhostButton, GlassPanel, GoldButton } from '@/components/zone-garden';
+import { useUser } from '@/context/user-context';
 import { F_BODY, F_DISPLAY, F_LABEL } from '@/constants/theme';
 
 const AUTH_BG_IMAGES: ImageSourcePropType[] = [
@@ -135,7 +136,17 @@ export default function AuthScreen() {
     return () => clearInterval(iv);
   }, []);
 
-  const enterApp = () => router.replace('/(tabs)');
+  const { setUser } = useUser();
+
+  const enterAsMember = () => {
+    setUser({ name: form.name || 'Guest Diner', email: form.email, guest: false });
+    router.replace('/(tabs)');
+  };
+
+  const enterAsGuest = () => {
+    setUser({ name: 'Guest', email: '', guest: true });
+    router.replace('/(tabs)');
+  };
 
   return (
     <KeyboardAvoidingView
@@ -400,12 +411,12 @@ export default function AuthScreen() {
                   </Pressable>
                 )}
 
-                <GoldButton full style={styles.submitButton} onPress={enterApp}>
+                <GoldButton full style={styles.submitButton} onPress={enterAsMember}>
                   <Text style={[F_LABEL, styles.goldButtonText]}>
                     {mode === 'login' ? 'Log In' : 'Create Account'}
                   </Text>
                 </GoldButton>
-                <GhostButton full onPress={enterApp}>
+                <GhostButton full onPress={enterAsGuest}>
                   <Text style={[F_LABEL, styles.ghostButtonText]}>Continue as Guest</Text>
                 </GhostButton>
                 <Text style={[F_BODY, styles.guestDisclaimer]}>

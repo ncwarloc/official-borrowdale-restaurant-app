@@ -4,6 +4,14 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { NoticeBanner } from '@/components/notice-banner';
+import { AddressesProvider } from '@/context/addresses-context';
+import { CartProvider } from '@/context/cart-context';
+import { FavoritesProvider } from '@/context/favorites-context';
+import { NoticeProvider } from '@/context/notice-context';
+import { NotificationsProvider } from '@/context/notifications-context';
+import { OrdersProvider } from '@/context/orders-context';
+import { UserProvider } from '@/context/user-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -11,8 +19,23 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <Stack screenOptions={{ headerShown: false }} />
+      <UserProvider>
+        <NoticeProvider>
+          <NotificationsProvider>
+            <CartProvider>
+              <OrdersProvider>
+                <FavoritesProvider>
+                  <AddressesProvider>
+                    <AnimatedSplashOverlay />
+                    <Stack screenOptions={{ headerShown: false }} />
+                    <NoticeBanner />
+                  </AddressesProvider>
+                </FavoritesProvider>
+              </OrdersProvider>
+            </CartProvider>
+          </NotificationsProvider>
+        </NoticeProvider>
+      </UserProvider>
     </ThemeProvider>
   );
 }
