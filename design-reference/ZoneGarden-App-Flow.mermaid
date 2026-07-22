@@ -1,0 +1,71 @@
+flowchart TD
+    Splash["🌿 Splash Screen<br/>(logo shatter/reassemble)"] --> Auth
+
+    Auth["Auth Screen<br/>Login / Sign Up / Forgot / Guest"] --> App
+
+    subgraph App["Main App (Bottom Nav)"]
+        direction TB
+        Home["🏠 Home<br/>Hero slideshow, Order Now,<br/>quick category chips,<br/>Specials / Popular / New Arrivals"]
+        Menu["📋 Menu<br/>Category grid"]
+        Orders["🧾 Orders<br/>Order history, Reorder"]
+        Cart["🛒 Cart<br/>Qty, Promo code, Totals"]
+        Profile["👤 Profile<br/>Hub screen"]
+    end
+
+    Home -->|tap category / see all| CategoryList
+    Menu -->|tap category| CategoryList
+    CategoryList["Category List<br/>(item rows + quick-add)"]
+
+    Home -->|tap item / quick-add| FoodDetail
+    CategoryList -->|tap item| FoodDetail
+    FoodDetail["Food Detail<br/>Image, desc, add-ons,<br/>qty, pairings, Add to Cart"]
+
+    FoodDetail -->|Add to Cart| Cart
+    CategoryList -.->|quick-add +| Cart
+    Home -.->|quick-add +| Cart
+
+    Cart -->|Proceed to Checkout| Checkout
+    Checkout["Checkout<br/>Delivery/Pickup/Dine-In,<br/>EcoCash/COD,<br/>order summary"]
+
+    Checkout -->|Place Order| WhatsApp["📱 WhatsApp<br/>(external)<br/>Formatted order message<br/>opens in WhatsApp"]
+    Checkout -->|order saved| Confirmation["Order Confirmation<br/>Order #, prep time, summary"]
+    Confirmation -->|Back to Home| Home
+    WhatsApp -.-> Confirmation
+
+    Orders -->|Reorder| Cart
+
+    CategoryList -->|"experience" id| RestExp["Restaurant Experience<br/>Story, Chef, Gallery, Awards,<br/>Hours, Reviews, Directions"]
+    CategoryList -->|"kidcamp" id| KidCamp["KidCamp<br/>Kids Menu, Birthday Packages,<br/>Play Area, Booking form"]
+    Home -->|chip| RestExp
+    Home -->|chip| KidCamp
+
+    Profile --> ProfileSub["Profile Sub-screens"]
+    ProfileSub --> Addresses["Saved Addresses"]
+    ProfileSub --> Favorites["Favorite Meals"]
+    ProfileSub --> Loyalty["Loyalty & Rewards<br/>Points, VIP, badges"]
+    ProfileSub --> Coupons["Coupons"]
+    ProfileSub --> Notifications["Notification Settings"]
+    ProfileSub --> Settings["Account Settings"]
+    ProfileSub --> About["About Zone Garden"]
+    About -.->|reuses| RestExp
+    ProfileSub --> Support["Help & Support<br/>WhatsApp / Live Chat /<br/>Call / Email / FAQs"]
+
+    Profile -->|Log Out| Auth
+
+    subgraph State["App State (in-memory)"]
+        direction LR
+        S1["cart[]"]
+        S2["favorites[]"]
+        S3["orders[]"]
+        S4["loyalty points"]
+        S5["user / guest"]
+        S6["theme (light/dark)"]
+    end
+
+    FoodDetail -.writes.-> S1
+    CategoryList -.writes.-> S2
+    FoodDetail -.writes.-> S2
+    Checkout -.writes.-> S3
+    Checkout -.writes.-> S4
+    Auth -.writes.-> S5
+    Profile -.writes.-> S6
