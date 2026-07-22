@@ -24,7 +24,16 @@ import Animated, {
 import { FoodCard, GlassPanel, Pill, Row } from '@/components/zone-garden';
 import { BottomTabInset, F_BODY, F_DISPLAY, F_LABEL, Spacing, useZoneGardenTheme } from '@/constants/theme';
 import { dishImg } from '@/constants/dish-images';
-import { CATEGORIES, CHEF_RECOMMENDATION, ITEMS, type MenuItem } from '@/constants/menu-data';
+import {
+  ARRIVALS_IDS,
+  CATEGORIES,
+  CHEF_RECOMMENDATION,
+  ITEMS,
+  POPULAR_IDS,
+  SPECIALS_IDS,
+  type MenuItem,
+} from '@/constants/menu-data';
+import { useCart } from '@/context/cart-context';
 import { useFavorites } from '@/context/favorites-context';
 import { useNotifications } from '@/context/notifications-context';
 
@@ -44,10 +53,6 @@ const HERO_SLIDES: { source: ImageSourcePropType; sub: string }[] = [
 const HERO_SLIDE_INTERVAL = 4000;
 const HERO_FADE_DURATION = 1400;
 const HERO_ZOOM_DURATION = 9000;
-
-const SPECIALS_IDS = ['m3', 't2', 'sa1', 'pl2', 'ps6'];
-const POPULAR_IDS = ['m16', 'm4', 'm22', 'pl1'];
-const ARRIVALS_IDS = ['t1', 't5', 't8'];
 
 const specials = ITEMS.filter((i) => SPECIALS_IDS.includes(i.id));
 const popular = ITEMS.filter((i) => POPULAR_IDS.includes(i.id));
@@ -100,6 +105,7 @@ export default function HomeScreen() {
 
   const { favorites, toggleFavorite } = useFavorites();
   const { unreadCount } = useNotifications();
+  const { addToCart } = useCart();
 
   const [searchQuery, setSearchQuery] = useState('');
   const q = searchQuery.trim().toLowerCase();
@@ -109,6 +115,13 @@ export default function HomeScreen() {
           (i) => i.name.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q),
         ).slice(0, 8)
       : [];
+
+  const quickAdd = (item: { id: string }) => {
+    const menuItem = ITEMS.find((i) => i.id === item.id);
+    if (!menuItem) return;
+    const added = addToCart(menuItem, 1, [], '');
+    if (added) router.push('/(tabs)/cart');
+  };
 
   const closeSearch = () => setSearchQuery('');
   const openItem = (item: { id: string }) => {
@@ -238,7 +251,7 @@ export default function HomeScreen() {
               <Text style={[F_DISPLAY, styles.heroTitle]}>
                 Experience Luxury Dining{'\n'}in Borrowdale.
               </Text>
-              <Pressable style={styles.orderButton}>
+              <Pressable style={styles.orderButton} onPress={() => router.push('/(tabs)/menu')}>
                 <LinearGradient
                   colors={[theme.goldSoft, theme.gold, theme.goldDeep]}
                   start={{ x: 0, y: 0 }}
@@ -261,9 +274,15 @@ export default function HomeScreen() {
               {c.name}
             </Pill>
           ))}
+          <Pill style={styles.chip} onPress={() => router.push('/experience')}>
+            Restaurant Experience
+          </Pill>
+          <Pill style={styles.chip} onPress={() => router.push('/kidcamp')}>
+            KidCamp
+          </Pill>
         </ScrollView>
 
-        <Row title="Today's Specials">
+        <Row title="Today's Specials" onSeeAll={() => router.push('/category/specials')}>
           {specials.map((item) => (
             <FoodCard
               key={item.id}
@@ -272,6 +291,7 @@ export default function HomeScreen() {
               onOpen={openItem}
               isFavorite={favorites.includes(item.id)}
               onToggleFavorite={toggleFavorite}
+              onQuickAdd={quickAdd}
             />
           ))}
         </Row>
@@ -282,7 +302,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <Row title="Most Popular">
+        <Row title="Most Popular" onSeeAll={() => router.push('/category/popular')}>
           {popular.map((item) => (
             <FoodCard
               key={item.id}
@@ -291,11 +311,12 @@ export default function HomeScreen() {
               onOpen={openItem}
               isFavorite={favorites.includes(item.id)}
               onToggleFavorite={toggleFavorite}
+              onQuickAdd={quickAdd}
             />
           ))}
         </Row>
 
-        <Row title="New Arrivals">
+        <Row title="New Arrivals" onSeeAll={() => router.push('/category/arrivals')}>
           {arrivals.map((item) => (
             <FoodCard
               key={item.id}
@@ -304,6 +325,7 @@ export default function HomeScreen() {
               onOpen={openItem}
               isFavorite={favorites.includes(item.id)}
               onToggleFavorite={toggleFavorite}
+              onQuickAdd={quickAdd}
             />
           ))}
         </Row>

@@ -14,8 +14,12 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useCart } from '@/context/cart-context';
 
 export default function AppTabs() {
+  const { cart } = useCart();
+  const cartCount = cart.reduce((sum, line) => sum + line.qty, 0);
+
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
@@ -27,11 +31,11 @@ export default function AppTabs() {
           <TabTrigger name="menu" href="/menu" asChild>
             <TabButton>Menu</TabButton>
           </TabTrigger>
-          <TabTrigger name="cart" href="/cart" asChild>
-            <TabButton>Cart</TabButton>
-          </TabTrigger>
           <TabTrigger name="orders" href="/orders" asChild>
             <TabButton>Orders</TabButton>
+          </TabTrigger>
+          <TabTrigger name="cart" href="/cart" asChild>
+            <TabButton badge={cartCount}>Cart</TabButton>
           </TabTrigger>
           <TabTrigger name="profile" href="/profile" asChild>
             <TabButton>Profile</TabButton>
@@ -42,15 +46,27 @@ export default function AppTabs() {
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+export function TabButton({
+  children,
+  isFocused,
+  badge,
+  ...props
+}: TabTriggerSlotProps & { badge?: number }) {
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
+        style={[styles.tabButtonView, styles.tabButtonRelative]}>
         <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
           {children}
         </ThemedText>
+        {!!badge && (
+          <View style={styles.tabBadge}>
+            <ThemedText type="small" style={styles.tabBadgeText}>
+              {badge}
+            </ThemedText>
+          </View>
+        )}
       </ThemedView>
     </Pressable>
   );
@@ -113,6 +129,27 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
+  },
+  tabButtonRelative: {
+    position: 'relative',
+  },
+  tabBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    borderRadius: 999,
+    backgroundColor: '#E35B5B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabBadgeText: {
+    fontSize: 9,
+    lineHeight: 11,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   externalPressable: {
     flexDirection: 'row',

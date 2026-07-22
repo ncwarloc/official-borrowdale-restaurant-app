@@ -6,42 +6,52 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { GlassPanel, ScreenHeader } from '@/components/zone-garden';
 import { BottomTabInset, F_BODY, Spacing, useZoneGardenTheme } from '@/constants/theme';
 import { dishImg } from '@/constants/dish-images';
-import { CATEGORIES, ITEMS, type MenuItem } from '@/constants/menu-data';
+import {
+  ARRIVALS_IDS,
+  CATEGORIES,
+  ITEMS,
+  POPULAR_IDS,
+  SPECIALS_IDS,
+  type MenuItem,
+} from '@/constants/menu-data';
+import { useCart } from '@/context/cart-context';
 import { useFavorites } from '@/context/favorites-context';
 
-const UNBUILT_CATEGORIES = new Set(['experience', 'kidcamp']);
+/** Curated Home rows are not real menu categories — resolve them here by name/id list instead of a `cat` lookup. */
+const VIRTUAL_CATEGORIES: Record<string, { name: string; ids: string[] }> = {
+  specials: { name: "Today's Specials", ids: SPECIALS_IDS },
+  popular: { name: 'Most Popular', ids: POPULAR_IDS },
+  arrivals: { name: 'New Arrivals', ids: ARRIVALS_IDS },
+};
 
 export default function CategoryListScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useZoneGardenTheme();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { addToCart } = useCart();
 
-  const category = CATEGORIES.find((c) => c.id === id);
-  const items = category ? ITEMS.filter((i) => i.cat === category.id) : [];
+  const virtual = id ? VIRTUAL_CATEGORIES[id] : undefined;
+  const category = virtual ? undefined : CATEGORIES.find((c) => c.id === id);
+  const title = virtual?.name ?? category?.name;
+  const items = virtual
+    ? ITEMS.filter((i) => virtual.ids.includes(i.id))
+    : category
+      ? ITEMS.filter((i) => i.cat === category.id)
+      : [];
 
-  if (!category) return null;
+  if (!title) return null;
 
-  if (UNBUILT_CATEGORIES.has(category.id)) {
-    return (
-      <View style={[styles.flex, { backgroundColor: theme.bg }]}>
-        <ScreenHeader title={category.name} onBack={() => router.back()} />
-        <View style={styles.comingSoon}>
-          <Text style={[F_BODY, { color: theme.textMuted }]}>Coming soon</Text>
-        </View>
-      </View>
-    );
-  }
+  const quickAdd = (item: MenuItem) => {
+    const added = addToCart(item, 1, [], '');
+    if (added) router.push('/(tabs)/cart');
+  };
 
   return (
     <View style={[styles.flex, { backgroundColor: theme.bg }]}>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={{ paddingBottom: BottomTabInset + Spacing.three }}>
-        <ScreenHeader
-          title={category.name}
-          subtitle={`${items.length} items`}
-          onBack={() => router.back()}
-        />
+        <ScreenHeader title={title} subtitle={`${items.length} items`} onBack={() => router.back()} />
         <View style={styles.list}>
           {items.map((item) => (
             <ItemRow
@@ -49,6 +59,7 @@ export default function CategoryListScreen() {
               item={item}
               isFavorite={isFavorite(item.id)}
               onToggleFavorite={() => toggleFavorite(item.id)}
+              onQuickAdd={() => quickAdd(item)}
             />
           ))}
         </View>
@@ -61,10 +72,12 @@ function ItemRow({
   item,
   isFavorite,
   onToggleFavorite,
+  onQuickAdd,
 }: {
   item: MenuItem;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  onQuickAdd: () => void;
 }) {
   const theme = useZoneGardenTheme();
   const truncatedDesc = item.desc.length > 70 ? `${item.desc.slice(0, 70)}…` : item.desc;
@@ -118,7 +131,7 @@ function ItemRow({
                   ))}
                 </View>
               )}
-              <Pressable style={styles.addButton}>
+              <Pressable onPress={onQuickAdd} hitSlop={8} style={styles.addButton}>
                 <LinearGradient
                   colors={[theme.goldSoft, theme.gold]}
                   start={{ x: 0, y: 0 }}
@@ -138,11 +151,6 @@ function ItemRow({
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-  },
-  comingSoon: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   list: {
     paddingHorizontal: 20,

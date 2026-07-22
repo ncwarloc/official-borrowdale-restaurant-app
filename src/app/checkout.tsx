@@ -15,6 +15,7 @@ import {
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,12 +27,13 @@ import MapView, { Marker } from 'react-native-maps';
 
 import { FieldInput, GlassPanel, GoldButton, ScreenHeader } from '@/components/zone-garden';
 import { F_BODY, F_LABEL, useZoneGardenTheme } from '@/constants/theme';
+import { RESTAURANT_ADDRESS, RESTAURANT_WHATSAPP } from '@/constants/restaurant';
 import { useCart } from '@/context/cart-context';
 import { useNotifications } from '@/context/notifications-context';
 import { useOrders } from '@/context/orders-context';
+import { useUser } from '@/context/user-context';
 import { useAddressSearch } from '@/hooks/use-address-search';
 
-const RESTAURANT_ADDRESS = 'No. 8 Campbell Road, Borrowdale, Harare, Zimbabwe';
 const RESTAURANT_LAT = -17.7642;
 const RESTAURANT_LNG = 31.0947;
 
@@ -67,6 +69,7 @@ export default function CheckoutScreen() {
   const { cart, subtotal, discount, tax, clearCart } = useCart();
   const { addOrder } = useOrders();
   const { addNotification } = useNotifications();
+  const { user } = useUser();
 
   const [fulfillment, setFulfillment] = useState<Fulfillment>('delivery');
   const [phone, setPhone] = useState('');
@@ -94,13 +97,51 @@ export default function CheckoutScreen() {
   const handlePlaceOrder = () => {
     if (cart.length === 0) return;
     const order = addOrder({ total, payment, fulfillment, items: cart });
+
+    const itemLines = cart
+      .map(
+        (line) =>
+          `• ${line.item.name} x${line.qty}${line.addons.length ? ` (${line.addons.map((a) => a.n).join(', ')})` : ''}`,
+      )
+      .join('\n');
+    const fulfillmentLine =
+      fulfillment === 'delivery'
+        ? `Delivery — ${address || '-'}`
+        : fulfillment === 'pickup'
+          ? 'Pickup at Zone Garden'
+          : `Dine-In — ${reserveTime || '-'}`;
+    const message = `Order #${order.number}
+
+Customer:
+${user?.name || 'Guest'}
+
+Phone:
+${phone || '-'}
+
+Fulfillment:
+${fulfillmentLine}
+
+Items
+${itemLines}
+
+Total:
+US$${total.toFixed(2)}
+
+Payment:
+${payment === 'ecocash' ? 'EcoCash' : 'Cash on Delivery'}
+
+Special Instructions:
+${dnotes || 'None'}`;
+
+    Linking.openURL(`https://wa.me/${RESTAURANT_WHATSAPP}?text=${encodeURIComponent(message)}`);
+
     addNotification(
       'Order sent',
       `Order #${order.number} has been sent to Zone Garden for $${total.toFixed(2)}.`,
       'order',
     );
     clearCart();
-    router.dismissTo('/(tabs)/orders');
+    router.push({ pathname: '/confirmation', params: { orderNumber: String(order.number) } });
   };
 
   const selectSavedAddress = (a: (typeof SAVED_ADDRESSES)[number]) => {

@@ -42,6 +42,8 @@ const LINKED_ROUTES = new Set<Row['id']>([
   'coupons',
   'notifications',
   'settings',
+  'about',
+  'support',
 ]);
 
 export default function ProfileScreen() {
@@ -72,7 +74,8 @@ export default function ProfileScreen() {
 
   const openRow = (id: Row['id']) => {
     if (!LINKED_ROUTES.has(id)) return;
-    router.push(`/(tabs)/profile/${id}`);
+    if (id === 'about') router.push('/experience');
+    else router.push(`/(tabs)/profile/${id}`);
   };
 
   const handleLogout = () => {

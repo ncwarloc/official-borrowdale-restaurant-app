@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { ClipboardList } from 'lucide-react-native';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -13,7 +14,10 @@ export default function OrdersScreen() {
   const { orders, markDelivered } = useOrders();
   const { replaceCart } = useCart();
 
-  const reorder = (order: Order) => replaceCart(order.items);
+  const reorder = (order: Order) => {
+    replaceCart(order.items);
+    router.push('/(tabs)/cart');
+  };
 
   return (
     <View style={[styles.flex, { backgroundColor: theme.bg }]}>

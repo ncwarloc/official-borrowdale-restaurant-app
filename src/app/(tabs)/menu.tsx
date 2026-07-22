@@ -22,7 +22,11 @@ export default function MenuScreen() {
             return (
               <Pressable
                 key={c.id}
-                onPress={() => router.push(`/category/${c.id}`)}
+                onPress={() => {
+                  if (c.id === 'experience') router.push('/experience');
+                  else if (c.id === 'kidcamp') router.push('/kidcamp');
+                  else router.push(`/category/${c.id}`);
+                }}
                 style={styles.tileWrap}>
                 <GlassPanel style={styles.tile}>
                   <View style={styles.tileImageWrap}>

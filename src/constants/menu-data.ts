@@ -145,3 +145,13 @@ export const ITEMS: MenuItem[] = [
 
 /** Picked once per app launch (module evaluates a single time per session), mirroring the reference. */
 export const CHEF_RECOMMENDATION: MenuItem = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+
+/**
+ * Curated Home-screen rows. These are not real menu categories (no item has
+ * cat: "specials"/"popular"/"arrivals") — shared here so Home's "See all" can
+ * route to `/category/<id>` and have the category screen recognize them as
+ * virtual categories instead of a real cat lookup.
+ */
+export const SPECIALS_IDS = ['m3', 't2', 'sa1', 'pl2', 'ps6'];
+export const POPULAR_IDS = ['m16', 'm4', 'm22', 'pl1'];
+export const ARRIVALS_IDS = ['t1', 't5', 't8'];
