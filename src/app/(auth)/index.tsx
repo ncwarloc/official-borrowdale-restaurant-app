@@ -6,6 +6,7 @@ import * as WebBrowser from 'expo-web-browser';
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
+  sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
@@ -52,7 +53,7 @@ const BG_FADE_DURATION = 1600;
 const BG_ZOOM_DURATION = 9000;
 
 type Mode = 'login' | 'signup' | 'forgot';
-type ForgotStep = 'details' | 'pin' | 'reset' | 'done';
+type ForgotStep = 'details' | 'done';
 
 function SlideshowLayer({ source, active }: { source: ImageSourcePropType; active: boolean }) {
   const opacity = useSharedValue(0);
@@ -109,10 +110,6 @@ function AuthInput({
   );
 }
 
-function randomPin(): string {
-  return String(Math.floor(1000 + Math.random() * 9000));
-}
-
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   'auth/email-already-in-use': 'An account with that email already exists — try logging in instead.',
   'auth/invalid-email': 'That email address doesn’t look right.',
@@ -140,24 +137,12 @@ export default function AuthScreen() {
 
   const [forgotStep, setForgotStep] = useState<ForgotStep>('details');
   const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotPhone, setForgotPhone] = useState('');
-  const [sentPin, setSentPin] = useState('');
-  const [enteredPin, setEnteredPin] = useState('');
-  const [pinError, setPinError] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [resetError, setResetError] = useState('');
+  const [resetEmailError, setResetEmailError] = useState('');
 
   const resetForgotFlow = () => {
     setForgotStep('details');
     setForgotEmail('');
-    setForgotPhone('');
-    setSentPin('');
-    setEnteredPin('');
-    setPinError('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setResetError('');
+    setResetEmailError('');
   };
 
   useEffect(() => {
@@ -249,7 +234,7 @@ export default function AuthScreen() {
           email,
           guest: false,
         });
-        router.replace('/(tabs)');
+        router.replace('/(tabs)/index');
       } catch (error) {
         showNotice(authErrorMessage(error));
       } finally {
@@ -307,7 +292,7 @@ export default function AuthScreen() {
           guest: false,
         });
       }
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/index');
     } catch (error) {
       showNotice(authErrorMessage(error));
     } finally {
@@ -317,7 +302,34 @@ export default function AuthScreen() {
 
   const enterAsGuest = () => {
     setUser({ name: 'Guest', email: '', guest: true });
-    router.replace('/(tabs)');
+    router.replace('/(tabs)/index');
+  };
+
+  const handleForgotPassword = async () => {
+    if (submitting) return;
+
+    const email = forgotEmail.trim();
+    if (!email) {
+      setResetEmailError('Enter your email address to receive a reset link.');
+      return;
+    }
+
+    if (!auth) {
+      showNotice('Password reset is not set up yet — add your Firebase project config to .env.');
+      return;
+    }
+
+    setSubmitting(true);
+    setResetEmailError('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setForgotStep('done');
+      showNotice('Password reset email sent. Check your inbox and spam folder.');
+    } catch (error) {
+      setResetEmailError(authErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleGoogleSignIn = async () => {
@@ -400,28 +412,29 @@ export default function AuthScreen() {
                 {forgotStep === 'details' && (
                   <>
                     <Text style={[F_BODY, styles.mutedText]}>
-                      Enter your email and phone number — we&apos;ll send a verification PIN.
+                      Enter your email address and we&apos;ll send a password reset link.
                     </Text>
                     <AuthInput
                       placeholder="Email address"
                       value={forgotEmail}
-                      onChangeText={setForgotEmail}
+                      onChangeText={(v) => {
+                        setForgotEmail(v);
+                        setResetEmailError('');
+                      }}
                       keyboardType="email-address"
                     />
-                    <AuthInput
-                      placeholder="Phone number"
-                      value={forgotPhone}
-                      onChangeText={setForgotPhone}
-                      keyboardType="phone-pad"
-                    />
+                    {resetEmailError ? (
+                      <Text style={[F_BODY, styles.errorText]}>{resetEmailError}</Text>
+                    ) : null}
                     <GoldButton
                       full
-                      disabled={!forgotEmail.trim() || !forgotPhone.trim()}
-                      onPress={() => {
-                        setSentPin(randomPin());
-                        setForgotStep('pin');
-                      }}>
-                      <Text style={[F_LABEL, styles.goldButtonText]}>Send PIN</Text>
+                      disabled={submitting}
+                      onPress={handleForgotPassword}>
+                      {submitting ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <Text style={[F_LABEL, styles.goldButtonText]}>Send Reset Email</Text>
+                      )}
                     </GoldButton>
                     <Pressable
                       onPress={() => {
@@ -434,109 +447,11 @@ export default function AuthScreen() {
                   </>
                 )}
 
-                {forgotStep === 'pin' && (
-                  <>
-                    <Text style={[F_BODY, styles.mutedText]}>
-                      We sent a 4-digit PIN to{' '}
-                      <Text style={styles.strongText}>{forgotEmail}</Text> and{' '}
-                      <Text style={styles.strongText}>{forgotPhone}</Text>. Enter it below.
-                    </Text>
-                    <Text style={[F_BODY, styles.demoPinText]}>
-                      Demo PIN (no SMS/email service connected): {sentPin}
-                    </Text>
-                    <AuthInput
-                      placeholder="4-digit PIN"
-                      value={enteredPin}
-                      onChangeText={(v) => {
-                        setEnteredPin(v.replace(/\D/g, '').slice(0, 4));
-                        setPinError('');
-                      }}
-                      keyboardType="number-pad"
-                    />
-                    {pinError ? <Text style={[F_BODY, styles.errorText]}>{pinError}</Text> : null}
-                    <GoldButton
-                      full
-                      disabled={enteredPin.length !== 4}
-                      onPress={() => {
-                        if (enteredPin === sentPin) {
-                          setForgotStep('reset');
-                          setPinError('');
-                        } else {
-                          setPinError('Incorrect PIN — please try again.');
-                        }
-                      }}>
-                      <Text style={[F_LABEL, styles.goldButtonText]}>Verify PIN</Text>
-                    </GoldButton>
-                    <Pressable
-                      onPress={() => {
-                        setSentPin(randomPin());
-                        setEnteredPin('');
-                        setPinError('');
-                      }}>
-                      <Text style={[F_LABEL, styles.resendLinkText]}>Resend PIN</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => {
-                        setForgotStep('details');
-                        setEnteredPin('');
-                        setPinError('');
-                      }}
-                      style={styles.backLink}>
-                      <Text style={[F_LABEL, styles.backLinkText]}>Back</Text>
-                    </Pressable>
-                  </>
-                )}
-
-                {forgotStep === 'reset' && (
-                  <>
-                    <Text style={[F_BODY, styles.mutedText]}>
-                      PIN verified. Set a new password.
-                    </Text>
-                    <AuthInput
-                      placeholder="New password"
-                      secureTextEntry
-                      value={newPassword}
-                      onChangeText={(v) => {
-                        setNewPassword(v);
-                        setResetError('');
-                      }}
-                    />
-                    <AuthInput
-                      placeholder="Confirm new password"
-                      secureTextEntry
-                      value={confirmPassword}
-                      onChangeText={(v) => {
-                        setConfirmPassword(v);
-                        setResetError('');
-                      }}
-                    />
-                    {resetError ? (
-                      <Text style={[F_BODY, styles.errorText]}>{resetError}</Text>
-                    ) : null}
-                    <GoldButton
-                      full
-                      disabled={!newPassword || !confirmPassword}
-                      onPress={() => {
-                        if (newPassword.length < 4) {
-                          setResetError('Password must be at least 4 characters.');
-                          return;
-                        }
-                        if (newPassword !== confirmPassword) {
-                          setResetError("Passwords don't match.");
-                          return;
-                        }
-                        setForgotStep('done');
-                      }}>
-                      <Text style={[F_LABEL, styles.goldButtonText]}>Reset Password</Text>
-                    </GoldButton>
-                  </>
-                )}
-
                 {forgotStep === 'done' && (
                   <View style={styles.doneBlock}>
                     <Check size={30} color="#3ED676" style={styles.doneIcon} />
                     <Text style={[F_BODY, styles.doneText]}>
-                      Password reset. You can now log in.
+                      Reset email sent. Check your inbox and spam folder.
                     </Text>
                     <Pressable
                       onPress={() => {
