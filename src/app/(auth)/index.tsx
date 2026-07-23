@@ -6,7 +6,6 @@ import * as WebBrowser from 'expo-web-browser';
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
-  sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
@@ -38,6 +37,7 @@ import { GhostButton, GlassPanel, GoldButton } from '@/components/zone-garden';
 import { useNotice } from '@/context/notice-context';
 import { useUser } from '@/context/user-context';
 import { F_BODY, F_DISPLAY, F_LABEL } from '@/constants/theme';
+import { requestPasswordReset } from '@/lib/password-reset';
 import { auth, db } from '@/lib/firebase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -234,7 +234,7 @@ export default function AuthScreen() {
           email,
           guest: false,
         });
-        router.replace('/(tabs)/index');
+        router.replace('/(tabs)' as never);
       } catch (error) {
         showNotice(authErrorMessage(error));
       } finally {
@@ -292,7 +292,7 @@ export default function AuthScreen() {
           guest: false,
         });
       }
-      router.replace('/(tabs)/index');
+      router.replace('/(tabs)' as never);
     } catch (error) {
       showNotice(authErrorMessage(error));
     } finally {
@@ -302,7 +302,7 @@ export default function AuthScreen() {
 
   const enterAsGuest = () => {
     setUser({ name: 'Guest', email: '', guest: true });
-    router.replace('/(tabs)/index');
+    router.replace('/(tabs)' as never);
   };
 
   const handleForgotPassword = async () => {
@@ -322,7 +322,7 @@ export default function AuthScreen() {
     setSubmitting(true);
     setResetEmailError('');
     try {
-      await sendPasswordResetEmail(auth, email);
+      await requestPasswordReset(email);
       setForgotStep('done');
       showNotice('Password reset email sent. Check your inbox and spam folder.');
     } catch (error) {
@@ -451,7 +451,7 @@ export default function AuthScreen() {
                   <View style={styles.doneBlock}>
                     <Check size={30} color="#3ED676" style={styles.doneIcon} />
                     <Text style={[F_BODY, styles.doneText]}>
-                      Reset email sent. Check your inbox and spam folder.
+                      Reset email sent. The link expires in 5 minutes, so open it right away.
                     </Text>
                     <Pressable
                       onPress={() => {

@@ -34,7 +34,7 @@ export default function FavoriteMealsScreen() {
                 <GlassPanel key={item.id} style={styles.card}>
                   <View style={styles.row}>
                     <Pressable
-                      onPress={() => router.push(`/item/${item.id}`)}
+                      onPress={() => router.push(`/item/${item.id}` as never)}
                       style={styles.itemPressable}>
                       <Image source={dishImg(item)} style={styles.image} resizeMode="cover" />
                       <View style={styles.textCol}>

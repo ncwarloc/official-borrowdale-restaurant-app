@@ -29,6 +29,7 @@ export default function CategoryListScreen() {
   const theme = useZoneGardenTheme();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addToCart } = useCart();
+  const go = (path: string) => router.push(path as never);
 
   const virtual = id ? VIRTUAL_CATEGORIES[id] : undefined;
   const category = virtual ? undefined : CATEGORIES.find((c) => c.id === id);
@@ -43,7 +44,7 @@ export default function CategoryListScreen() {
 
   const quickAdd = (item: MenuItem) => {
     const added = addToCart(item, 1, [], '');
-    if (added) router.push('/(tabs)/cart');
+    if (added) go('/(tabs)/cart');
   };
 
   return (
@@ -83,7 +84,7 @@ function ItemRow({
   const truncatedDesc = item.desc.length > 70 ? `${item.desc.slice(0, 70)}…` : item.desc;
 
   return (
-    <GlassPanel onPress={() => router.push(`/item/${item.id}`)} style={styles.row}>
+    <GlassPanel onPress={() => router.push(`/item/${item.id}` as never)} style={styles.row}>
       <View style={styles.rowInner}>
         <View style={styles.thumbWrap}>
           <Image source={dishImg(item)} style={styles.thumb} resizeMode="cover" />

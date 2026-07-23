@@ -8,6 +8,7 @@ import { CATEGORIES, ITEMS } from '@/constants/menu-data';
 
 export default function MenuScreen() {
   const theme = useZoneGardenTheme();
+  const go = (path: string) => router.push(path as never);
 
   return (
     <View style={[styles.flex, { backgroundColor: theme.bg }]}>
@@ -23,9 +24,9 @@ export default function MenuScreen() {
               <Pressable
                 key={c.id}
                 onPress={() => {
-                  if (c.id === 'experience') router.push('/experience');
-                  else if (c.id === 'kidcamp') router.push('/kidcamp');
-                  else router.push(`/category/${c.id}`);
+                  if (c.id === 'experience') go('/experience');
+                  else if (c.id === 'kidcamp') go('/kidcamp');
+                  else go(`/category/${c.id}`);
                 }}
                 style={styles.tileWrap}>
                 <GlassPanel style={styles.tile}>

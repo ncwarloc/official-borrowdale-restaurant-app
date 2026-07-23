@@ -33,6 +33,7 @@ export default function FoodDetailScreen() {
   const insets = useSafeAreaInsets();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addToCart } = useCart();
+  const go = (path: string) => router.push(path as never);
 
   const item = ITEMS.find((i) => i.id === id);
 
@@ -44,7 +45,7 @@ export default function FoodDetailScreen() {
 
   const handleAddToCart = () => {
     if (addToCart(item, qty, addons, instructions)) {
-      router.dismissTo('/(tabs)/cart');
+      router.dismissTo('/(tabs)/cart' as never);
     }
   };
 
@@ -206,7 +207,7 @@ export default function FoodDetailScreen() {
                   {pairings.map((p) => (
                     <Pressable
                       key={p.id}
-                      onPress={() => router.push(`/item/${p.id}`)}
+                      onPress={() => go(`/item/${p.id}`)}
                       style={[
                         styles.pairingCard,
                         { backgroundColor: theme.card, borderColor: theme.cardBorder },

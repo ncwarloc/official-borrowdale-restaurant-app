@@ -93,6 +93,7 @@ function HeroSlide({ source, active }: { source: ImageSourcePropType; active: bo
 export default function HomeScreen() {
   const theme = useZoneGardenTheme();
   const insets = useSafeAreaInsets();
+  const go = (path: string) => router.push(path as never);
 
   const catHour = (new Date().getUTCHours() + 2) % 24; // Central Africa Time (UTC+2)
   const greeting = catHour < 12 ? 'Good morning' : 'Good evening';
@@ -120,13 +121,13 @@ export default function HomeScreen() {
     const menuItem = ITEMS.find((i) => i.id === item.id);
     if (!menuItem) return;
     const added = addToCart(menuItem, 1, [], '');
-    if (added) router.push('/(tabs)/cart');
+    if (added) go('/(tabs)/cart');
   };
 
   const closeSearch = () => setSearchQuery('');
   const openItem = (item: { id: string }) => {
     closeSearch();
-    router.push(`/item/${item.id}`);
+    go(`/item/${item.id}`);
   };
 
   return (
@@ -146,7 +147,7 @@ export default function HomeScreen() {
             </View>
           </View>
           <Pressable
-            onPress={() => router.push('/(tabs)/profile/notifications')}
+            onPress={() => go('/(tabs)/profile/notifications')}
             style={[
               styles.bellButton,
               { backgroundColor: theme.card, borderColor: theme.cardBorder },
@@ -251,7 +252,7 @@ export default function HomeScreen() {
               <Text style={[F_DISPLAY, styles.heroTitle]}>
                 Experience Luxury Dining{'\n'}in Borrowdale.
               </Text>
-              <Pressable style={styles.orderButton} onPress={() => router.push('/(tabs)/menu')}>
+              <Pressable style={styles.orderButton} onPress={() => go('/(tabs)/menu')}>
                 <LinearGradient
                   colors={[theme.goldSoft, theme.gold, theme.goldDeep]}
                   start={{ x: 0, y: 0 }}
@@ -270,19 +271,19 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipsRow}>
           {quickChips.map((c) => (
-            <Pill key={c.id} style={styles.chip} onPress={() => router.push(`/category/${c.id}`)}>
+            <Pill key={c.id} style={styles.chip} onPress={() => go(`/category/${c.id}`)}>
               {c.name}
             </Pill>
           ))}
-          <Pill style={styles.chip} onPress={() => router.push('/experience')}>
+          <Pill style={styles.chip} onPress={() => go('/experience')}>
             Restaurant Experience
           </Pill>
-          <Pill style={styles.chip} onPress={() => router.push('/kidcamp')}>
+          <Pill style={styles.chip} onPress={() => go('/kidcamp')}>
             KidCamp
           </Pill>
         </ScrollView>
 
-        <Row title="Today's Specials" onSeeAll={() => router.push('/category/specials')}>
+        <Row title="Today's Specials" onSeeAll={() => go('/category/specials')}>
           {specials.map((item) => (
             <FoodCard
               key={item.id}
@@ -302,7 +303,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <Row title="Most Popular" onSeeAll={() => router.push('/category/popular')}>
+        <Row title="Most Popular" onSeeAll={() => go('/category/popular')}>
           {popular.map((item) => (
             <FoodCard
               key={item.id}
@@ -316,7 +317,7 @@ export default function HomeScreen() {
           ))}
         </Row>
 
-        <Row title="New Arrivals" onSeeAll={() => router.push('/category/arrivals')}>
+        <Row title="New Arrivals" onSeeAll={() => go('/category/arrivals')}>
           {arrivals.map((item) => (
             <FoodCard
               key={item.id}

@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { signOut } from 'firebase/auth';
 import {
   Award,
   Bell,
@@ -23,6 +24,7 @@ import { useFavorites } from '@/context/favorites-context';
 import { useNotifications } from '@/context/notifications-context';
 import { useOrders } from '@/context/orders-context';
 import { useUser } from '@/context/user-context';
+import { auth } from '@/lib/firebase';
 
 type ProfileRoute = 'addresses' | 'favorites' | 'loyalty' | 'coupons' | 'notifications' | 'settings';
 
@@ -52,6 +54,7 @@ export default function ProfileScreen() {
   const { points } = useOrders();
   const { favorites } = useFavorites();
   const { unreadCount } = useNotifications();
+  const go = (path: string) => router.push(path as never);
 
   const isGuest = !!user?.guest;
 
@@ -74,13 +77,24 @@ export default function ProfileScreen() {
 
   const openRow = (id: Row['id']) => {
     if (!LINKED_ROUTES.has(id)) return;
-    if (id === 'about') router.push('/experience');
-    else router.push(`/(tabs)/profile/${id}`);
+    if (id === 'about') go('/experience');
+    else go(`/(tabs)/profile/${id}`);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Clearing local state alone left Firebase's persisted session alive,
+    // so the next cold start would silently resume it and skip straight
+    // back past the login/signup screen — signing out here is what actually
+    // ends the session.
+    if (auth) {
+      try {
+        await signOut(auth);
+      } catch {
+        // best-effort — still clear local state and navigate away below
+      }
+    }
     setUser(null);
-    router.replace('/(auth)');
+    router.replace('/(auth)' as never);
   };
 
   const vipProgress = Math.min(100, Math.round(points / 5));

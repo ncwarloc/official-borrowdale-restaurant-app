@@ -14,7 +14,7 @@ const FULFILLMENT_LABEL: Record<string, string> = {
 };
 
 function backToHome() {
-  router.dismissTo('/(tabs)/index');
+  router.dismissTo('/(tabs)' as never);
 }
 
 export default function ConfirmationScreen() {
