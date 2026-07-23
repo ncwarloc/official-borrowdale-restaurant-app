@@ -14,6 +14,19 @@ const ICON_BY_TYPE: Record<NotificationType, LucideIcon> = {
   general: Bell,
 };
 
+function formatNotificationDate(date: Date | null): string {
+  if (!date) return 'Just now';
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 60_000) return 'Just now';
+  const diffMinutes = Math.floor(diffMs / 60_000);
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) return 'Today';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export default function NotificationsScreen() {
   const theme = useZoneGardenTheme();
   const { notifications, markAllRead } = useNotifications();
@@ -52,7 +65,7 @@ export default function NotificationsScreen() {
                           {n.body}
                         </Text>
                         <Text style={[F_LABEL, styles.date, { color: theme.textMuted }]}>
-                          {n.date}
+                          {formatNotificationDate(n.createdAt)}
                         </Text>
                       </View>
                       {!n.read && <View style={styles.unreadDot} />}

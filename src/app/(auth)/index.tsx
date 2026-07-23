@@ -1,6 +1,14 @@
+import * as Google from 'expo-auth-session/providers/google';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import * as WebBrowser from 'expo-web-browser';
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Check } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
@@ -30,6 +38,8 @@ import { useNotice } from '@/context/notice-context';
 import { useUser } from '@/context/user-context';
 import { F_BODY, F_DISPLAY, F_LABEL } from '@/constants/theme';
 import { auth, db } from '@/lib/firebase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_BG_IMAGES: ImageSourcePropType[] = [
   require('@/assets/images/auth-bg-1.jpg'),
@@ -162,6 +172,94 @@ export default function AuthScreen() {
   const { showNotice } = useNotice();
   const [submitting, setSubmitting] = useState(false);
 
+  const hasGoogleConfig = Boolean(
+    process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID ||
+      process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
+      process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
+      process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  );
+
+  const isExpoGo =
+    Constants.appOwnership === 'expo' ||
+    Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+  const [googleRequest, googleResponse, promptGoogleSignIn] = Google.useIdTokenAuthRequest({
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
+    androidClientId: isExpoGo ? undefined : process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: isExpoGo ? undefined : process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
+
+  const syncUserProfile = async (
+    uid: string,
+    email: string,
+    fallbackName: string,
+    preferredName?: string,
+  ) => {
+    if (!db) return fallbackName;
+
+    const userRef = doc(db, 'users', uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      const nameToSave = preferredName || fallbackName;
+      await setDoc(userRef, {
+        name: nameToSave,
+        email,
+        points: 0,
+        favorites: [],
+      });
+      return nameToSave;
+    }
+
+    const existingName = userSnap.data().name as string | undefined;
+    return existingName || preferredName || fallbackName;
+  };
+
+  useEffect(() => {
+    const signInFromGoogle = async () => {
+      if (googleResponse?.type !== 'success') return;
+
+      if (!auth || !db) {
+        showNotice('Sign-in isn’t set up yet — add your Firebase project config to .env.');
+        return;
+      }
+
+      const idToken = googleResponse.params.id_token;
+      if (!idToken) {
+        showNotice('Google sign-in did not return a valid token.');
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        const credential = GoogleAuthProvider.credential(idToken);
+        const result = await signInWithCredential(auth, credential);
+        const email = result.user.email || '';
+        const fallbackName = result.user.displayName || email || 'Member';
+        const savedName = await syncUserProfile(
+          result.user.uid,
+          email,
+          fallbackName,
+          result.user.displayName || undefined,
+        );
+
+        setUser({
+          name: savedName,
+          email,
+          guest: false,
+        });
+        router.replace('/(tabs)');
+      } catch (error) {
+        showNotice(authErrorMessage(error));
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
+    signInFromGoogle();
+  }, [googleResponse, setUser, showNotice]);
+
   const handleSubmit = async () => {
     if (submitting) return;
 
@@ -198,8 +296,11 @@ export default function AuthScreen() {
         setUser({ name, email, guest: false });
       } else {
         const credential = await signInWithEmailAndPassword(firebaseAuth, email, password);
-        const snap = await getDoc(doc(firestore, 'users', credential.user.uid));
-        const savedName = snap.exists() ? (snap.data().name as string | undefined) : undefined;
+        const savedName = await syncUserProfile(
+          credential.user.uid,
+          credential.user.email || email,
+          credential.user.email || 'Member',
+        );
         setUser({
           name: savedName || credential.user.email || 'Member',
           email: credential.user.email || email,
@@ -217,6 +318,24 @@ export default function AuthScreen() {
   const enterAsGuest = () => {
     setUser({ name: 'Guest', email: '', guest: true });
     router.replace('/(tabs)');
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (submitting) return;
+    if (!hasGoogleConfig) {
+      showNotice('Google sign-in is not configured yet. Add Google client IDs to your .env file.');
+      return;
+    }
+    if (!googleRequest) {
+      showNotice('Google sign-in is initializing. Please try again in a moment.');
+      return;
+    }
+
+    try {
+      await promptGoogleSignIn();
+    } catch {
+      showNotice('Unable to open Google sign-in right now. Please try again.');
+    }
   };
 
   return (
@@ -497,6 +616,9 @@ export default function AuthScreen() {
                 </GoldButton>
                 <GhostButton full disabled={submitting} onPress={enterAsGuest}>
                   <Text style={[F_LABEL, styles.ghostButtonText]}>Continue as Guest</Text>
+                </GhostButton>
+                <GhostButton full disabled={submitting} onPress={handleGoogleSignIn}>
+                  <Text style={[F_LABEL, styles.ghostButtonText]}>Continue with Google</Text>
                 </GhostButton>
                 <Text style={[F_BODY, styles.guestDisclaimer]}>
                   Guest orders are limited to 1 item, with loyalty points and coupons locked.

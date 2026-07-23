@@ -1,4 +1,5 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
@@ -15,6 +16,14 @@ import { UserProvider } from '@/context/user-context';
 
 SplashScreen.preventAutoHideAsync();
 
+const isExpoGo =
+  Constants.appOwnership === 'expo' ||
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+const PushNotificationsRegistrar = !isExpoGo
+  ? require('@/components/push-notifications-registrar').PushNotificationsRegistrar
+  : null;
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (
@@ -26,6 +35,7 @@ export default function RootLayout() {
               <OrdersProvider>
                 <FavoritesProvider>
                   <AddressesProvider>
+                    {PushNotificationsRegistrar ? <PushNotificationsRegistrar /> : null}
                     <AnimatedSplashOverlay />
                     <Stack screenOptions={{ headerShown: false }} />
                     <NoticeBanner />
